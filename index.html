@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미국 주식 정보 접근 개선 — 프레임워크</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06090f;
+  --surface: #0d1117;
+  --surface2: #161b22;
+  --border: #21262d;
+  --border-light: #30363d;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --text-muted: #484f58;
+  --accent-cyan: #58a6ff;
+  --accent-teal: #3fb950;
+  --accent-orange: #d29922;
+  --accent-rose: #f85149;
+  --accent-purple: #bc8cff;
+  --accent-blue: #388bfd;
+  --kakao: #fee500;
+  --toss: #3182f6;
+  --layer1: #58a6ff;
+  --layer2: #d29922;
+  --layer3: #f85149;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+.header {
+  padding: 32px 40px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%);
+}
+
+.header-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 900px;
+}
+
+.header-sub strong { color: var(--text); }
+
+/* ===== CONCEPT BAR ===== */
+.concept-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.concept-item {
+  flex: 1;
+  padding: 14px 20px;
+  border-right: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.concept-item:last-child { border-right: none; }
+
+.concept-item .label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.concept-item .val {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.concept-item .val.cyan { color: var(--accent-cyan); }
+.concept-item .val.orange { color: var(--accent-orange); }
+.concept-item .val.rose { color: var(--accent-rose); }
+
+.concept-item .desc {
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  min-height: calc(100vh - 200px);
+}
+
+/* ===== FRAMEWORK AREA ===== */
+.fw-container {
+  position: relative;
+  padding: 36px 28px 56px 56px;
+}
+
+/* Axis labels */
+.axis-x-label, .axis-y-label {
+  position: absolute;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axis-x-label {
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent-cyan);
+}
+
+.axis-y-label {
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  color: var(--accent-orange);
+  white-space: nowrap;
+}
+
+.axis-arrow { font-size: 14px; opacity: 0.6; }
+
+/* Grid */
+.grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* Source layer bands (vertical) */
+.layer-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.layer-band-1 {
+  left: 0; width: 33.3%;
+  background: rgba(88,166,255,0.03);
+  border-right: 1px dashed rgba(88,166,255,0.15);
+}
+.layer-band-2 {
+  left: 33.3%; width: 33.4%;
+  background: rgba(210,153,34,0.03);
+  border-right: 1px dashed rgba(210,153,34,0.15);
+}
+.layer-band-3 {
+  left: 66.7%; width: 33.3%;
+  background: rgba(248,81,73,0.03);
+}
+
+/* Layer labels at top */
+.layer-label {
+  position: absolute;
+  top: 6px;
+  z-index: 3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.ll-1 { left: 4%; color: var(--layer1); background: rgba(88,166,255,0.08); }
+.ll-2 { left: 37.5%; color: var(--layer2); background: rgba(210,153,34,0.08); }
+.ll-3 { left: 71%; color: var(--layer3); background: rgba(248,81,73,0.08); }
+
+/* Barrier divider (horizontal) */
+.barrier-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.barrier-line-1 {
+  top: 33.3%;
+  background: linear-gradient(90deg, transparent, rgba(210,153,34,0.2), transparent);
+}
+
+.barrier-line-2 {
+  top: 66.6%;
+  background: linear-gradient(90deg, transparent, rgba(210,153,34,0.2), transparent);
+}
+
+/* Barrier labels on right edge */
+.barrier-label {
+  position: absolute;
+  right: 6px;
+  z-index: 3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--accent-orange);
+  opacity: 0.5;
+  pointer-events: none;
+  text-align: right;
+}
+
+.bl-top { top: 14%; }
+.bl-mid { top: 47%; }
+.bl-bot { top: 80%; }
+
+/* ===== DATA POINTS ===== */
+.pt {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate(-50%, -50%);
+}
+
+.pt:hover {
+  z-index: 100;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.pt-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+  transition: all 0.25s;
+}
+
+.pt:hover .pt-dot {
+  box-shadow: 0 0 14px currentColor;
+}
+
+.pt-name {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.pt:hover .pt-name { opacity: 1; }
+
+.pt.active .pt-dot {
+  box-shadow: 0 0 20px currentColor;
+  transform: scale(1.4);
+}
+.pt.active .pt-name { opacity: 1; }
+
+/* Category colors */
+.c-kakao .pt-dot { border-color: var(--kakao); background: rgba(254,229,0,0.15); color: var(--kakao); }
+.c-toss .pt-dot { border-color: var(--toss); background: rgba(49,130,246,0.15); color: var(--toss); }
+.c-dom .pt-dot { border-color: var(--accent-teal); background: rgba(63,185,80,0.12); color: var(--accent-teal); }
+.c-global .pt-dot { border-color: var(--accent-purple); background: rgba(188,140,255,0.12); color: var(--accent-purple); }
+.c-hypo .pt-dot {
+  border-color: var(--accent-rose);
+  background: rgba(248,81,73,0.1);
+  color: var(--accent-rose);
+  border-style: dashed;
+  animation: glow 2.5s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+  50% { box-shadow: 0 0 10px 2px rgba(248,81,73,0.25); }
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+  background: var(--surface);
+}
+
+.sb-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* Legend */
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.leg-item:hover { color: var(--text); }
+
+.leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+
+.leg-dot.kakao { border-color: var(--kakao); background: rgba(254,229,0,0.25); }
+.leg-dot.toss { border-color: var(--toss); background: rgba(49,130,246,0.25); }
+.leg-dot.dom { border-color: var(--accent-teal); background: rgba(63,185,80,0.2); }
+.leg-dot.global { border-color: var(--accent-purple); background: rgba(188,140,255,0.2); }
+.leg-dot.hypo { border-color: var(--accent-rose); background: rgba(248,81,73,0.15); border-style: dashed; }
+
+/* Axis explain */
+.ax-explain {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.ax-explain strong {
+  display: block;
+  color: var(--text);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.ax-explain.ax-x { background: rgba(88,166,255,0.05); border-left: 2px solid var(--accent-cyan); }
+.ax-explain.ax-y { background: rgba(210,153,34,0.05); border-left: 2px solid var(--accent-orange); }
+
+/* Source layer explain */
+.src-layer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.src-layer .src-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.src-tag.s1 { color: var(--layer1); background: rgba(88,166,255,0.1); }
+.src-tag.s2 { color: var(--layer2); background: rgba(210,153,34,0.1); }
+.src-tag.s3 { color: var(--layer3); background: rgba(248,81,73,0.1); }
+
+/* Filter buttons */
+.filter-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.fbtn {
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.fbtn.active {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text);
+}
+
+/* Detail card */
+.detail-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 0;
+  line-height: 1.7;
+}
+
+.detail-card { display: none; }
+.detail-card.show { display: block; }
+
+.detail-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.detail-prov {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.detail-prov.kakao { color: var(--kakao); background: rgba(254,229,0,0.08); }
+.detail-prov.toss { color: var(--toss); background: rgba(49,130,246,0.08); }
+.detail-prov.dom { color: var(--accent-teal); background: rgba(63,185,80,0.08); }
+.detail-prov.global { color: var(--accent-purple); background: rgba(188,140,255,0.08); }
+.detail-prov.hypo { color: var(--accent-rose); background: rgba(248,81,73,0.08); }
+
+.detail-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.detail-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.dm-row {
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.dm-label { color: var(--text-dim); }
+.dm-val { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+
+.detail-insight {
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 8px 12px;
+  background: rgba(88,166,255,0.04);
+  border-left: 2px solid var(--accent-blue);
+  border-radius: 0 4px 4px 0;
+  color: var(--text-dim);
+}
+
+.detail-insight strong { color: var(--text); }
+
+/* Gap indicator */
+.gap-badge {
+  position: absolute;
+  z-index: 5;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  color: var(--accent-rose);
+  padding: 2px 6px;
+  border: 1px dashed rgba(248,81,73,0.3);
+  border-radius: 3px;
+  background: rgba(248,81,73,0.05);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+  .sidebar { max-height: none; }
+  .fw-container { min-height: 480px; }
+  .concept-bar { flex-wrap: wrap; }
+  .concept-item { min-width: 50%; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Information Access Framework v2 · Kakao Pay Securities PM</div>
+  <h1>미국 주식 정보 접근 개선 — 소스 유형 × 접근 장벽 프레임워크</h1>
+  <div class="header-sub">
+    X축: 정보 <strong>소스의 성격</strong> (공시·정량 → 준공식·정성 → 비공식·커뮤니티) · 
+    Y축: 정보 <strong>접근 장벽의 유형</strong> (도달 → 적시성 → 해석)
+  </div>
+</div>
+
+<div class="concept-bar">
+  <div class="concept-item">
+    <div class="label">X축 — 소스 레이어</div>
+    <div class="val cyan">1층 공시 → 2층 준공식 → 3층 비공식</div>
+    <div class="desc">정보의 공식성과 구조화 수준</div>
+  </div>
+  <div class="concept-item">
+    <div class="label">Y축 — 접근 장벽</div>
+    <div class="val orange">도달 → 적시성 → 해석</div>
+    <div class="desc">정보가 투자자에게 "쓸 수 있는 상태"로 전환되는 깊이</div>
+  </div>
+  <div class="concept-item">
+    <div class="label">핵심 공백</div>
+    <div class="val rose">3층 × 전 장벽</div>
+    <div class="desc">비공식 소스(Reddit, X, 커뮤니티)에 대한 국내 서비스 부재</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="fw-container">
+    <div class="axis-x-label">
+      <span>1층 공시·정량</span>
+      <span class="axis-arrow">←</span>
+      <span style="opacity:0.4">소스 유형 (X)</span>
+      <span class="axis-arrow">→</span>
+      <span>3층 비공식·커뮤니티</span>
+    </div>
+    <div class="axis-y-label">
+      <span>도달 (Access)</span>
+      <span class="axis-arrow">←</span>
+      <span style="opacity:0.4">접근 장벽 (Y)</span>
+      <span class="axis-arrow">→</span>
+      <span>해석 (Interpret)</span>
+    </div>
+
+    <div class="grid" id="grid">
+      <!-- Layer bands -->
+      <div class="layer-band layer-band-1"></div>
+      <div class="layer-band layer-band-2"></div>
+      <div class="layer-band layer-band-3"></div>
+
+      <!-- Layer labels -->
+      <div class="layer-label ll-1">1층 공시·정량</div>
+      <div class="layer-label ll-2">2층 준공식·정성</div>
+      <div class="layer-label ll-3">3층 비공식·커뮤니티</div>
+
+      <!-- Barrier lines -->
+      <div class="barrier-line barrier-line-1"></div>
+      <div class="barrier-line barrier-line-2"></div>
+
+      <!-- Barrier labels -->
+      <div class="barrier-label bl-top">도달(Access)</div>
+      <div class="barrier-label bl-mid">적시성(Timely)</div>
+      <div class="barrier-label bl-bot">해석(Interpret)</div>
+
+      <!-- Gap zones -->
+      <div class="gap-badge" style="right:6%;top:22%;">GAP: 국내 공백</div>
+      <div class="gap-badge" style="right:6%;top:55%;">GAP: 국내 공백</div>
+      <div class="gap-badge" style="right:6%;top:85%;">GAP: 완전 공백</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <!-- Legend -->
+    <div class="sb-section">
+      <h3>범례</h3>
+      <div class="leg-item" data-cat="kakao"><div class="leg-dot kakao"></div>카카오페이증권</div>
+      <div class="leg-item" data-cat="toss"><div class="leg-dot toss"></div>토스증권</div>
+      <div class="leg-item" data-cat="dom"><div class="leg-dot dom"></div>국내 타사 / 스타트업</div>
+      <div class="leg-item" data-cat="global"><div class="leg-dot global"></div>해외 서비스</div>
+      <div class="leg-item" data-cat="hypo"><div class="leg-dot hypo"></div>신규 가설 (후보)</div>
+    </div>
+
+    <!-- Axis explanation -->
+    <div class="sb-section">
+      <h3>축 설계 근거</h3>
+      <div class="ax-explain ax-x">
+        <strong>X축 — 정보 소스 레이어</strong>
+        과제 문제가 "공시 정보 접근"에만 국한되지 않음. 라이트 유저는 커뮤니티 소스에 더 의존. 소스 유형별 접근 장벽이 질적으로 다름.
+      </div>
+      <div class="ax-explain ax-y">
+        <strong>Y축 — 접근 장벽 유형</strong>
+        "정보 접근 개선"의 3단계 분해: ① 도달(영어/플랫폼/유료벽) → ② 적시성(시차/속도) → ③ 해석(맥락/뉘앙스/함의). 모두 "정보 접근" 범위 내.
+      </div>
+    </div>
+
+    <!-- Source layers -->
+    <div class="sb-section">
+      <h3>소스 레이어 정의</h3>
+      <div class="src-layer">
+        <span class="src-tag s1">1층</span>
+        <span><strong style="color:var(--text)">공시·정량</strong> — 10-K/Q, 8-K, 실적 숫자, 가이던스, SEC Filing</span>
+      </div>
+      <div class="src-layer">
+        <span class="src-tag s2">2층</span>
+        <span><strong style="color:var(--text)">준공식·정성</strong> — 어닝콜 뉘앙스, 경영진 인터뷰, 컨퍼런스 발표, 애널리스트 리포트</span>
+      </div>
+      <div class="src-layer">
+        <span class="src-tag s3">3층</span>
+        <span><strong style="color:var(--text)">비공식·커뮤니티</strong> — Reddit(WSB, r/stocks), X/Twitter FinTwit, 텔레그램 리딩방, 유튜브, Discord</span>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="sb-section">
+      <h3>필터</h3>
+      <div class="filter-row">
+        <button class="fbtn active" data-f="all">전체</button>
+        <button class="fbtn" data-f="kakao">카카오페이</button>
+        <button class="fbtn" data-f="toss">토스</button>
+        <button class="fbtn" data-f="dom">국내 타사</button>
+        <button class="fbtn" data-f="global">해외</button>
+        <button class="fbtn" data-f="hypo">신규 가설</button>
+      </div>
+    </div>
+
+    <!-- Detail -->
+    <div class="sb-section" id="detail-section">
+      <h3>상세 정보</h3>
+      <div class="detail-empty" id="detail-empty">포인트를 클릭하면<br>상세 정보가 표시됩니다</div>
+      <div class="detail-card" id="detail-card">
+        <h4 id="d-name"></h4>
+        <div id="d-prov" class="detail-prov"></div>
+        <p class="detail-desc" id="d-desc"></p>
+        <div class="detail-metrics" id="d-metrics"></div>
+        <div class="detail-insight" id="d-insight"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// X: 0=공시(1층) → 100=비공식(3층)
+// Y: 0(하단)=도달 → 100(상단)=해석
+// CSS bottom positioning: higher y = higher on screen
+
+const data = [
+  // ===== 카카오페이증권 =====
+  { id:'kp1', name:'AI 시황 베타', cat:'kakao', x:12, y:15,
+    prov:'카카오페이증권',
+    desc:'미국 지수 마감 현황 AI 분석·요약. 범용 시황 중심, 1층 공시 데이터 기반. 영어 정보를 한국어로 전달하는 "도달" 장벽 해소.',
+    metrics:{'소스 레이어':'1층 (지수·시황)','장벽 해소':'도달 (번역·요약)','개인화':'없음 (범용)'},
+    insight:'1층×도달 영역. <strong>가장 기초적인 정보 접근 개선</strong>이나, 토스·미래에셋·스톡나우 등과 직접 경쟁.'
+  },
+  { id:'kp2', name:'무쓸투 (전문 리서치)', cat:'kakao', x:25, y:75,
+    prov:'카카오페이증권',
+    desc:'전문 리서처가 작성하는 종목 분석 콘텐츠. 1~2층 소스를 해석하여 제공. "해석" 장벽 해소에 해당하나 휴먼 에디터 기반으로 확장성 제한.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'해석 (분석·맥락)','생산방식':'휴먼 에디터'},
+    insight:'<strong>해석 장벽 해소의 유일한 자사 자산</strong>. AI 증강으로 커버리지 확장 가능성.'
+  },
+  { id:'kp3', name:'시버트 CIO 칼럼', cat:'kakao', x:30, y:55,
+    prov:'카카오페이증권',
+    desc:'Mark Malek CIO 데일리 칼럼 한국어 번역. 2층(전문가 인사이트) 소스의 적시성+해석 장벽 해소. AI 번역+편집자 검수.',
+    metrics:{'소스 레이어':'2층 (전문가 인사이트)','장벽 해소':'적시성+해석','발행주기':'주 4~5회'},
+    insight:'<strong>시버트 파트너십은 독점 자산</strong>. 다만 "번역된 칼럼" 포맷의 소비 진입장벽 존재.'
+  },
+  { id:'kp4', name:'종목별 토론방', cat:'kakao', x:70, y:20,
+    prov:'카카오페이증권',
+    desc:'종목별 커뮤니티. 층수인증(평단가 공유), 팔로우/차단. 한국어 3층 커뮤니티에 해당하나, 미국 현지 커뮤니티(Reddit 등)와의 연결 없음.',
+    metrics:{'소스 레이어':'3층 (국내 커뮤니티)','장벽 해소':'도달 (한국어 공간)','정보 품질':'검증 미흡'},
+    insight:'3층×도달 영역이나 <strong>"미국" 투자 정보가 아닌 "한국인끼리의" 감정 공유</strong>. 미국 현지 담론 접근 불가.'
+  },
+
+  // ===== 토스증권 =====
+  { id:'ts1', name:'어닝콜 실시간 번역', cat:'toss', x:35, y:25,
+    prov:'토스증권',
+    desc:'어닝콜 실시간 한국어 번역. 2층 소스의 도달+적시성 장벽 동시 해소. 출시 2주 만에 20만명 사용(PMF 검증).',
+    metrics:{'소스 레이어':'2층 (어닝콜)','장벽 해소':'도달+적시성','PMF':'2주 20만 사용자'},
+    insight:'<strong>"2층×도달·적시성"의 국내 벤치마크</strong>. "번역"이라는 단순 기능이지만 핵심 페인포인트 정조준.'
+  },
+  { id:'ts2', name:'AI 시그널', cat:'toss', x:30, y:70,
+    prov:'토스증권',
+    desc:'뉴스/공시 분석 → 주가 변동 원인 실시간 추론. 산업별 연관성 제시. 1~2층 소스의 "해석" 장벽 해소 시도.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'해석 (Why 분석)','방식':'AI 자동 생성'},
+    insight:'"What"에서 "Why"로의 전환. <strong>해석 장벽에 AI를 적용한 대표 국내 사례</strong>.'
+  },
+
+  // ===== 국내 타사 =====
+  { id:'dm1', name:'삼성 마이픽 (My Pick)', cat:'dom', x:20, y:35,
+    prov:'삼성증권 mPOP',
+    desc:'64개 데이터 기반 개인화 콘텐츠 큐레이션. 1층 공시 중심으로 보유 종목 맞춤 정보 전달. "도달→적시성" 영역.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'도달+적시성 (큐레이션)','출시':'2025.12'},
+    insight:'개인화된 도달 장벽 해소. <strong>1층 소스의 큐레이션에서 가장 진전된 국내 사례</strong>.'
+  },
+  { id:'dm2', name:'삼성 AI 번역·요약 (10-K)', cat:'dom', x:15, y:18,
+    prov:'삼성증권 mPOP',
+    desc:'미국 상장사 10-K, 10-Q, 8-K 공시를 AI로 번역·요약. 1층 공시의 언어 장벽(도달) 해소.',
+    metrics:{'소스 레이어':'1층 (SEC Filing)','장벽 해소':'도달 (번역·요약)','출시':'2025.09'},
+    insight:'1층×도달. 토스 어닝콜 번역과 유사한 "번역·요약" 레이어. <strong>Ⅲ사분면 레드오션</strong>.'
+  },
+  { id:'dm3', name:'미래에셋 AI이슈체크', cat:'dom', x:22, y:50,
+    prov:'미래에셋증권',
+    desc:'미국 주식 급등락 발생 시 AI가 관련 이슈 자동 안내. 1층 가격 변동 + 2층 뉴스의 "적시성+해석" 장벽 해소.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'적시성+해석','출시':'2025.05'},
+    insight:'"왜 움직였는지" 설명. <strong>적시성+해석 교차점</strong>의 국내 사례.'
+  },
+  { id:'dm4', name:'스톡나우 어닝콜 번역', cat:'dom', x:38, y:20,
+    prov:'스톡나우 (스타트업)',
+    desc:'약 4,000개 미국 상장사 어닝콜 실시간 한국어 번역+음성 통역. 실적 리포트 AI 요약. 모닝브리핑(팟캐스트).',
+    metrics:{'소스 레이어':'2층 (어닝콜)','장벽 해소':'도달+적시성','MAU':'3만+ (4개월차)'},
+    insight:'증권사가 아닌 <strong>스타트업이 2층×도달 PMF 확보</strong>. "정보 속도" 단일 가치 집중.'
+  },
+  { id:'dm5', name:'스톡나우 속보+AI분석', cat:'dom', x:32, y:45,
+    prov:'스톡나우 (스타트업)',
+    desc:'속보 발생 시 AI 분석 제공(Pro 전용). Pro 멤버십 베타: 120%+ 높은 뉴스 사용량.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'적시성+해석','과금':'월 16,900원 Pro'},
+    insight:'속보의 <strong>"도달→해석" 전환 시도</strong>. Pro 전용으로 유료 전환 가능성 검증 중.'
+  },
+  { id:'dm6', name:'텔레그램 리딩방 (금감원 중단)', cat:'dom', x:65, y:15,
+    prov:'키움증권 등',
+    desc:'키움증권 "미국주식 톡톡" 등 증권사 텔레그램 채널. 구독자 3.7만명(1위). 2025.12 금감원 규제로 중단.',
+    metrics:{'소스 레이어':'2~3층 (큐레이션)','장벽 해소':'도달','현황':'금감원 규제로 중단'},
+    insight:'<strong>규제 리스크</strong>. 증권사의 비공식 채널 운영이 금감원에 의해 차단. 이 수요는 여전히 존재.'
+  },
+  { id:'dm7', name:'미국주식 유튜버 생태계', cat:'dom', x:72, y:40,
+    prov:'오선의 미국증시 / 소수몽키 등',
+    desc:'오선 라이브(밤9시~새벽6시 실시간 시황), 소수몽키, 김단테 등. 어닝콜 통역, 시황 브리핑, 종목 분석. 세이브앱 출시.',
+    metrics:{'소스 레이어':'2~3층','장벽 해소':'도달+적시성+해석','생태계':'독립 크리에이터'},
+    insight:'<strong>3층 소스의 한국형 해석자</strong>. 증권사 앱 밖에서 정보 접근 욕구 충족 중. 증권사와 경쟁이 아닌 보완 관계.'
+  },
+
+  // ===== 해외 =====
+  { id:'gl1', name:'Robinhood Cortex Digest', cat:'global', x:22, y:45,
+    prov:'Robinhood (미국)',
+    desc:'포트폴리오 기반 AI 개인화 요약. Top return driver, Top mover, 예정 이벤트. 1~2층 소스의 적시성+해석 해소.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'적시성+해석 (개인화)','대상':'Gold 구독자'},
+    insight:'<strong>1~2층 소스의 개인화 해석</strong>. "왜 움직였는지"까지 포함해 적시성·해석 동시 해소.'
+  },
+  { id:'gl2', name:'Public Alpha (AI 코파일럿)', cat:'global', x:28, y:80,
+    prov:'Public.com (미국)',
+    desc:'GPT-4 기반 투자 리서치 코파일럿. SEC filing, 어닝콜, 뉴스 등 1~2층 소스의 깊은 해석. 대화→거래 전환율 48h 내 50%.',
+    metrics:{'소스 레이어':'1~2층','장벽 해소':'해석 (대화형 심층)','전환율':'대화→거래 50%'},
+    insight:'<strong>"해석" 장벽 해소의 글로벌 벤치마크</strong>. "대화의 절반이 거래로" 연결되는 강력한 PMF.'
+  },
+  { id:'gl3', name:'Seeking Alpha Virtual Analyst', cat:'global', x:50, y:85,
+    prov:'Seeking Alpha (미국)',
+    desc:'크라우드소싱 분석 + AI Virtual Analyst. Bull/Bear 양면 분석. 1~2~3층 소스를 통합하여 최고 수준의 해석 제공.',
+    metrics:{'소스 레이어':'1~2~3층 통합','장벽 해소':'해석 (최고 수준)','차별점':'인간+AI 하이브리드'},
+    insight:'<strong>소스 통합 × 해석의 정점</strong>. 크라우드(3층) + 공시(1층) + AI가 결합된 유일한 모델.'
+  },
+  { id:'gl4', name:'AltIndex / Quiver Quant', cat:'global', x:75, y:55,
+    prov:'AltIndex / Quiver (미국)',
+    desc:'Reddit 멘션 추적, 소셜 센티멘트 분석, 의원 거래 추적 등 대안 데이터 플랫폼. 3층 소스의 적시성+해석 해소.',
+    metrics:{'소스 레이어':'3층 (Reddit/X/대안데이터)','장벽 해소':'적시성+해석','사용자':'5만+ (AltIndex)'},
+    insight:'<strong>3층 소스를 정량화·구조화</strong>. Reddit 센티먼트 → 주가 선행지표. 한국 투자자 접근 불가.'
+  },
+  { id:'gl5', name:'Reddit Answers (AI 검색)', cat:'global', x:85, y:30,
+    prov:'Reddit',
+    desc:'Reddit이 자체 출시한 AI 기반 답변 서비스. 게시물에서 정보를 찾아 사용자 질문에 답변. 3층 소스의 도달 장벽 해소.',
+    metrics:{'소스 레이어':'3층 (Reddit 네이티브)','장벽 해소':'도달 (AI 검색)','출시':'2024.12'},
+    insight:'<strong>3층 소스 내부에서의 도달 혁신</strong>. 한국어 미지원, 한국 투자자 접근 불가.'
+  },
+  { id:'gl6', name:'StockTwits 센티멘트', cat:'global', x:78, y:25,
+    prov:'StockTwits (미국)',
+    desc:'종목별 투자자 센티멘트 게시판 + Quiver Quant 의원거래 연동. 3층 커뮤니티의 도달 인프라.',
+    metrics:{'소스 레이어':'3층 (커뮤니티)','장벽 해소':'도달','연동':'Quiver Quant'},
+    insight:'미국 투자자의 <strong>3층 센티멘트 인프라</strong>. 한국의 카카오페이 토론방과 유사하나 데이터 구조화 수준 차이.'
+  },
+
+  // ===== 신규 가설 =====
+  { id:'h1', name:'🔴 Reddit 센티멘트 한국어 피드', cat:'hypo', x:80, y:35,
+    prov:'가설 #1 — 3층×도달·적시성',
+    desc:'r/wallstreetbets, r/stocks 등 주요 서브레딧의 종목별 센티멘트를 AI가 실시간 요약·번역하여 카카오페이증권 내에서 피드 형태로 제공.',
+    metrics:{'소스':'3층 (Reddit/X)','장벽':'도달+적시성','공백':'국내 완전 공백','난이도':'중간'},
+    insight:'<strong>3층×도달의 완전 공백 영역</strong>. 한국 투자자가 미국 현지 커뮤니티 담론에 접근하는 경로가 사실상 없음.'
+  },
+  { id:'h2', name:'🔴 어닝콜 후 48h AI 진단서', cat:'hypo', x:35, y:65,
+    prov:'가설 #2 — 2층×해석',
+    desc:'실적 발표 후 48시간 내, 어닝콜+실적+시장반응을 통합 분석한 "AI 실적 진단서"를 보유 종목 사용자에게 자동 서빙.',
+    metrics:{'소스':'1~2층 통합','장벽':'해석 (통합 분석)','공백':'국내 공백','난이도':'낮음 (MVP)'},
+    insight:'토스 어닝콜 번역의 <strong>다음 단계(해석)</strong>. "번역 이후의 공백"을 정조준.'
+  },
+  { id:'h3', name:'🔴 미국 커뮤니티 × 국내 토론방 브릿지', cat:'hypo', x:75, y:65,
+    prov:'가설 #3 — 3층×해석',
+    desc:'Reddit/X에서 특정 종목 논의가 활발할 때, AI가 핵심 논점을 요약·한국어화하여 카카오페이 종목 토론방에 "미국 현지 담론" 섹션으로 삽입.',
+    metrics:{'소스':'3층 (Reddit→카카오페이)','장벽':'해석 (맥락 번역)','공백':'국내·해외 완전 공백','난이도':'높음'},
+    insight:'<strong>3층×해석의 완전 미개척 영역</strong>. 기존 토론방(자사 자산) 위에 미국 현지 담론을 얹는 구조. 차별화 최대.'
+  },
+  { id:'h4', name:'🔴 커뮤니티 팩트체크 레이어', cat:'hypo', x:68, y:50,
+    prov:'가설 #4 — 3층×적시성',
+    desc:'기존 토론방 게시글에 AI가 "SEC Filing 근거 있음", "출처 미확인" 등 자동 태깅. 3층 커뮤니티 정보의 신뢰성 장벽 해소.',
+    metrics:{'소스':'3층 (토론방)','장벽':'적시성 (실시간 검증)','기존 자산':'토론방 활용','난이도':'중간'},
+    insight:'<strong>기존 토론방 자산 활용</strong>으로 신규 개발 비용 절감. "에코챔버→집단지성" 전환 시도.'
+  },
+  { id:'h5', name:'🔴 경영진 발언 뉘앙스 트래커', cat:'hypo', x:45, y:75,
+    prov:'가설 #5 — 2층×해석(심층)',
+    desc:'어닝콜 발언의 톤 변화, 이전 분기 대비 표현 차이 등 "뉘앙스" 분석. "가이던스를 낮췄지만 자신감 있게 말했다" 같은 맥락 제공.',
+    metrics:{'소스':'2층 (어닝콜 뉘앙스)','장벽':'해석 (심층 맥락)','공백':'국내 완전 공백','난이도':'높음'},
+    insight:'<strong>2층 소스의 가장 깊은 해석 영역</strong>. 번역(도달)→내용 요약(적시성)→뉘앙스(해석)의 최종 단계.'
+  },
+  { id:'h6', name:'🔴 아침 개인화 디브리핑', cat:'hypo', x:28, y:40,
+    prov:'가설 #6 — 1~2층×적시성',
+    desc:'매일 아침 7~8시, 보유/관심 종목 한정 전야 리캡 자동 생성. 스톡나우 모닝브리핑의 "개인화" 버전.',
+    metrics:{'소스':'1~2층','장벽':'적시성 (시차 해소)','참고':'Robinhood Digest 유사','난이도':'낮음'},
+    insight:'Robinhood Digest의 한국 적용. <strong>시차 장벽 해소의 가장 직접적인 해법</strong>. 삼성 마이픽과 경쟁.'
+  },
+  { id:'h7', name:'🔴 정책 리스크 × 종목 연결', cat:'hypo', x:50, y:55,
+    prov:'가설 #7 — 2~3층×적시성',
+    desc:'관세/수출통제 뉴스 발생 시 "내 종목 영향도" 실시간 알림. 정책 뉴스(2~3층)와 포트폴리오(1층)의 교차 분석.',
+    metrics:{'소스':'2~3층 (정책 뉴스)','장벽':'적시성+해석','시의성':'매우 높음','난이도':'중간'},
+    insight:'2025~26년 서학개미 최대 손실 요인(관세). <strong>소스 교차 분석의 시의성 높은 가설</strong>.'
+  },
+];
+
+// Render
+const grid = document.getElementById('grid');
+
+data.forEach(p => {
+  const el = document.createElement('div');
+  el.className = `pt c-${p.cat}`;
+  el.dataset.id = p.id;
+  el.dataset.cat = p.cat;
+  el.style.left = p.x + '%';
+  el.style.bottom = (p.y * 0.88 + 4) + '%';
+  el.style.top = 'auto';
+  el.innerHTML = `
+    <div class="pt-dot"></div>
+    <div class="pt-name">${p.name.replace(/🔴 /, '')}</div>
+  `;
+  el.addEventListener('click', () => showDetail(p.id));
+  grid.appendChild(el);
+});
+
+function showDetail(id) {
+  const p = data.find(x => x.id === id);
+  if (!p) return;
+  document.querySelectorAll('.pt.active').forEach(e => e.classList.remove('active'));
+  document.querySelector(`.pt[data-id="${id}"]`)?.classList.add('active');
+
+  document.getElementById('detail-empty').style.display = 'none';
+  const card = document.getElementById('detail-card');
+  card.classList.add('show');
+
+  document.getElementById('d-name').textContent = p.name;
+  const prov = document.getElementById('d-prov');
+  prov.textContent = p.prov;
+  prov.className = 'detail-prov ' + p.cat;
+  document.getElementById('d-desc').textContent = p.desc;
+
+  const met = document.getElementById('d-metrics');
+  met.innerHTML = '';
+  if (p.metrics) {
+    Object.entries(p.metrics).forEach(([k,v]) => {
+      met.innerHTML += `<div class="dm-row"><span class="dm-label">${k}</span><span class="dm-val">${v}</span></div>`;
+    });
+  }
+  document.getElementById('d-insight').innerHTML = p.insight;
+}
+
+// Filters
+document.querySelectorAll('.fbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const f = btn.dataset.f;
+    document.querySelectorAll('.pt').forEach(pt => {
+      if (f === 'all' || pt.dataset.cat === f) {
+        pt.style.opacity = '1'; pt.style.pointerEvents = 'auto';
+      } else {
+        pt.style.opacity = '0.1'; pt.style.pointerEvents = 'none';
+      }
+    });
+  });
+});
+
+// Legend hover
+document.querySelectorAll('.leg-item').forEach(item => {
+  item.addEventListener('mouseenter', () => {
+    const cat = item.dataset.cat;
+    document.querySelectorAll('.pt').forEach(pt => {
+      pt.style.opacity = pt.dataset.cat === cat ? '1' : '0.1';
+    });
+  });
+  item.addEventListener('mouseleave', () => {
+    const af = document.querySelector('.fbtn.active')?.dataset.f;
+    document.querySelectorAll('.pt').forEach(pt => {
+      if (af === 'all' || pt.dataset.cat === af) {
+        pt.style.opacity = '1';
+      } else { pt.style.opacity = '0.1'; }
+    });
+  });
+});
+</script>
+</body>
+</html>
